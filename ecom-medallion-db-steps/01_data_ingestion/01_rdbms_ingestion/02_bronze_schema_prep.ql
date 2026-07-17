@@ -1,44 +1,36 @@
 %sql
--- ============================================================
--- OPTION A - STEP 1 SETUP
--- Unity Catalog + Notebook friendly
--- Catalog: ecomsphere
---
+
 -- What this script does:
--- 1) Creates schemas: meta, bronze, silver, gold
--- 2) Creates meta tables: cdc_watermark, job_audit
--- 3) Creates bronze CDC log tables for ALL source tables
--- 4) Initializes watermark rows for each table
--- ============================================================
+ 1) Creates schemas: meta, bronze, silver, gold
+ 2) Creates meta tables: cdc_watermark, job_audit
+ 3) Creates bronze CDC log tables for ALL source tables
+ 4) Initializes watermark rows for each table
+
 
 USE CATALOG ecomsphere;
+1) Create Medallion schemas
 
--- ------------------------------------------------------------
--- 1) Create Medallion schemas
--- ------------------------------------------------------------
 CREATE SCHEMA IF NOT EXISTS meta;
 CREATE SCHEMA IF NOT EXISTS bronze;
 CREATE SCHEMA IF NOT EXISTS silver;
 CREATE SCHEMA IF NOT EXISTS gold;
 
--- ------------------------------------------------------------
--- 2) META TABLES
--- ------------------------------------------------------------
 
+ 2) META TABLES
 -- 2.1 Watermark table (query-based CDC control)
 CREATE TABLE IF NOT EXISTS meta.cdc_watermark (
-  source_schema STRING,         -- 'src_oltp_sim'
-  source_table  STRING,         -- e.g. 'orders'
-  watermark_col STRING,         -- 'updated_at' (we will use this)
-  last_watermark_ts TIMESTAMP,  -- last extracted timestamp
-  updated_at TIMESTAMP          -- audit
+  source_schema STRING,       
+  source_table  STRING,        
+  watermark_col STRING,        
+  last_watermark_ts TIMESTAMP, 
+  updated_at TIMESTAMP         
 ) USING DELTA;
 
--- 2.2 Job audit table (optional but very useful for teaching + ops)
+-- 2.2 Job audit table
 CREATE TABLE IF NOT EXISTS meta.job_audit (
-  cdc_run_id STRING,              -- airflow run_id or manual run label
-  pipeline_step STRING,           -- e.g. 'extract_orders', 'merge_silver_orders'
-  status STRING,                  -- 'STARTED','SUCCESS','FAILED'
+  cdc_run_id STRING,            
+  pipeline_step STRING,          
+  status STRING,                  
   started_at TIMESTAMP,
   ended_at TIMESTAMP,
   records_read BIGINT,
@@ -46,14 +38,8 @@ CREATE TABLE IF NOT EXISTS meta.job_audit (
   message STRING
 ) USING DELTA;
 
--- ------------------------------------------------------------
--- 3) BRONZE CDC LOG TABLES (append-only)
--- Each CDC log table has:
---   - cdc_run_id
---   - cdc_extracted_at
---   - cdc_op  ('I','U','SD','HD')
--- plus original columns from source table
--- ------------------------------------------------------------
+
+-- 3) BRONZE CDC LOG TABLES 
 
 -- 3.1 brand
 CREATE TABLE IF NOT EXISTS bronze.brand_cdc (
@@ -257,9 +243,9 @@ CREATE TABLE IF NOT EXISTS bronze.shipment_cdc (
   is_deleted BOOLEAN
 ) USING DELTA;
 
--- ------------------------------------------------------------
--- 4) Initialize watermark rows (start from very old timestamp) (run only first time for setup)
--- ------------------------------------------------------------
+
+-- 4) Initialize watermark rows 
+
 INSERT OVERWRITE ecomsphere.meta.cdc_watermark
 SELECT * FROM VALUES
   ('src_oltp_sim','brand','updated_at',TIMESTAMP('1900-01-01 00:00:00'), current_timestamp()),
