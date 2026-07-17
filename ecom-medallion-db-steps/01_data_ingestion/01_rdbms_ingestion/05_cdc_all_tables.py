@@ -1,10 +1,4 @@
-# ==============================================================
 # ALL TABLES CDC (Query-based, updated_at watermark) + JOB AUDIT
-# Source: ecomsphere.src_oltp_sim.<table>
-# Target: ecomsphere.bronze.<table>_cdc   (append-only CDC log)
-# Meta:   ecomsphere.meta.cdc_watermark   (per table)
-# Audit:  ecomsphere.meta.job_audit       (per run + step)
-# ==============================================================
 
 from datetime import datetime, timezone
 import uuid
@@ -33,9 +27,8 @@ tables = [
     "shipment",
 ]
 
-# --------------------------------------------------------------
-# 1) Dynamic run_id for the whole job run (Airflow-friendly)
-# --------------------------------------------------------------
+# 1) Dynamic run_id for the whole job run
+
 run_ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 run_id = f"{run_ts}_{uuid.uuid4().hex[:6]}"
 job_start = datetime.now(timezone.utc)
@@ -46,9 +39,8 @@ spark.sql(f"USE CATALOG {CATALOG}")
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{META_SCHEMA}")
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{BRONZE_SCHEMA}")
 
-# --------------------------------------------------------------
-# 2) Ensure meta tables exist (safe)
-# --------------------------------------------------------------
+# 2) Ensure meta tables exist 
+
 spark.sql(f"""
 CREATE TABLE IF NOT EXISTS {WATERMARK_TABLE} (
   source_schema STRING,
@@ -72,10 +64,6 @@ CREATE TABLE IF NOT EXISTS {AUDIT_TABLE} (
 ) USING DELTA
 """)
 
-
-# --------------------------------------------------------------
-# 4) Helpers: audit insert/update
-# --------------------------------------------------------------
 def audit_started(step: str):
     spark.sql(f"""
     INSERT INTO {AUDIT_TABLE}
@@ -113,9 +101,8 @@ def audit_failed(step: str, err: str):
     WHERE cdc_run_id='{run_id}' AND pipeline_step='{step}'
     """)
 
-# --------------------------------------------------------------
 # 5) Run CDC for each table
-# --------------------------------------------------------------
+
 for t in tables:
     step = f"extract_{t}"
     audit_started(step)
@@ -176,9 +163,9 @@ for t in tables:
 
 print("All-tables CDC completed. RUN ID:", run_id)
 
-# --------------------------------------------------------------
-# 6) Quick visibility (optional)
-# --------------------------------------------------------------
+
+# 6) Quick visibility 
+
 display(
     spark.table(AUDIT_TABLE)
          .filter(F.col("cdc_run_id") == run_id)
