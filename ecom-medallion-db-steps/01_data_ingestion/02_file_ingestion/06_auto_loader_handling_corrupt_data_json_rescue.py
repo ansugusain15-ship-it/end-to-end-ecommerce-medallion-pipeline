@@ -40,9 +40,3 @@ df = (
       .toTable(target_table)
 )
 
-
-# Databricks documents that _rescued_data captures:
-#
-# fields missing from schema
-# type mismatches
-# case mismatches
