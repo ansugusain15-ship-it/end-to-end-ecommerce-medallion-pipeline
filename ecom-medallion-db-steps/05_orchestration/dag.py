@@ -8,13 +8,6 @@ from airflow.utils.task_group import TaskGroup
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.providers.databricks.operators.databricks import DatabricksRunNowOperator
 
-
-# ============================================================
-# DAG: dag_10_industry_ready_ecom_medallion_pipeline
-# Purpose:
-#   Final production-style orchestration DAG for the E-commerce
-#   Medallion Architecture project.
-#
 # Flow:
 #   initialize run metadata
 #       -> source checks
@@ -25,18 +18,11 @@ from airflow.providers.databricks.operators.databricks import DatabricksRunNowOp
 #       -> reconciliation checks
 #       -> success / failure markers
 #       -> final audit update
-#
-# goal:
-#   Show a full industry-style Medallion pipeline with
-#   control metadata, DQ, Gold modeling, serving builds,
-#   reconciliation, and final run closure.
-# ============================================================
 
 
 DAG_ID = "dag_10_industry_ready_ecom_medallion_pipeline"
 DATABRICKS_CONN_ID = "databricks_default"
 
-# Replace with your actual Databricks Job IDs
 RDBMS_BRONZE_INGESTION_JOB_ID = 11111111111111
 ADLS_BRONZE_INGESTION_JOB_ID = 22222222222222
 BRONZE_VALIDATION_JOB_ID = 33333333333333
@@ -57,16 +43,8 @@ default_args = {
 }
 
 
-def initialize_pipeline_run(**context):
-    """
-    Initialize pipeline control metadata.
-
-    In a real project this step may:
-    - generate pipeline_run_id
-    - read last successful watermark
-    - determine incremental window
-    - insert STARTED record into governance.pipeline_run_audit
-    """
+def initialize_pipeline_run:
+   
     pipeline_run_id = str(uuid.uuid4())
     dag_id = context["dag"].dag_id
     airflow_run_id = context["run_id"]
@@ -120,16 +98,7 @@ def pipeline_failure_marker(**context):
 
 
 def finalize_pipeline_audit(**context):
-    """
-    Final audit closure step.
-
-    In a real project this step may:
-    - update governance.pipeline_run_audit
-    - persist final status
-    - store processed window
-    - record start/end timestamps
-    - record row counts / rejection counts / reconciliation status
-    """
+ 
     ti = context["ti"]
     pipeline_run_id = ti.xcom_pull(task_ids="initialize_pipeline_run", key="pipeline_run_id")
     window_start = ti.xcom_pull(task_ids="initialize_pipeline_run", key="window_start")
@@ -152,17 +121,15 @@ with DAG(
     tags=["ecomsphere", "bronze", "silver", "gold", "serving", "audit", "dag10"],
 ) as dag:
 
-    # ------------------------------------------------------------
     # Initialize run metadata
-    # ------------------------------------------------------------
+    
     initialize_run = PythonOperator(
         task_id="initialize_pipeline_run",
         python_callable=initialize_pipeline_run,
     )
 
-    # ------------------------------------------------------------
     # Source checks
-    # ------------------------------------------------------------
+   
     with TaskGroup(group_id="source_checks", tooltip="Source readiness checks") as source_checks:
 
         source_check = PythonOperator(
@@ -170,9 +137,8 @@ with DAG(
             python_callable=source_readiness_check,
         )
 
-    # ------------------------------------------------------------
     # Bronze layer
-    # ------------------------------------------------------------
+    
     with TaskGroup(group_id="bronze_layer", tooltip="Bronze ingestion and validation") as bronze_layer:
 
         rdbms_to_bronze = DatabricksRunNowOperator(
@@ -199,9 +165,9 @@ with DAG(
 
         [rdbms_to_bronze, adls_to_bronze] >> bronze_ingestion_complete >> bronze_validation
 
-    # ------------------------------------------------------------
+    
     # Silver layer
-    # ------------------------------------------------------------
+  
     with TaskGroup(group_id="silver_layer", tooltip="Bronze to Silver transformation and DQ") as silver_layer:
 
         bronze_to_silver = DatabricksRunNowOperator(
@@ -218,9 +184,9 @@ with DAG(
 
         bronze_to_silver >> silver_dq_metrics
 
-    # ------------------------------------------------------------
+   
     # Gold layer
-    # ------------------------------------------------------------
+   
     with TaskGroup(group_id="gold_layer", tooltip="Silver to Gold modeling") as gold_layer:
 
         silver_to_gold = DatabricksRunNowOperator(
@@ -229,9 +195,9 @@ with DAG(
             job_id=SILVER_TO_GOLD_JOB_ID,
         )
 
-    # ------------------------------------------------------------
+   
     # Serving layer
-    # ------------------------------------------------------------
+   
     with TaskGroup(group_id="serving_layer", tooltip="Gold serving model builds") as serving_layer:
 
         build_serving_layer = DatabricksRunNowOperator(
@@ -240,9 +206,9 @@ with DAG(
             job_id=GOLD_SERVING_LAYER_JOB_ID,
         )
 
-    # ------------------------------------------------------------
+ 
     # Reconciliation / post-load validation
-    # ------------------------------------------------------------
+  
     with TaskGroup(group_id="reconciliation_layer", tooltip="Post-load reconciliation checks") as reconciliation_layer:
 
         reconciliation_checks = DatabricksRunNowOperator(
@@ -251,9 +217,9 @@ with DAG(
             job_id=RECONCILIATION_CHECKS_JOB_ID,
         )
 
-    # ------------------------------------------------------------
+  
     # Final status tasks
-    # ------------------------------------------------------------
+  
     pipeline_success = PythonOperator(
         task_id="pipeline_success_marker",
         python_callable=pipeline_success_marker,
@@ -272,9 +238,8 @@ with DAG(
         trigger_rule=TriggerRule.ALL_DONE,
     )
 
-    # ------------------------------------------------------------
     # Dependencies
-    # ------------------------------------------------------------
+   
     initialize_run >> source_checks >> bronze_layer >> silver_layer >> gold_layer >> serving_layer >> reconciliation_layer
 
     reconciliation_layer >> pipeline_success
