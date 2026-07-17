@@ -42,8 +42,3 @@ df = (
   .toTable(target_table)
 )
 
-
-# Update table to enable column mapping
-# ALTER TABLE ecomsphere.bronze.bronze_orders_tsv SET TBLPROPERTIES (
-#   'delta.columnMapping.mode' = 'name'
-# );
