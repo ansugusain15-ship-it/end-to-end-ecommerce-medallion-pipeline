@@ -1,21 +1,11 @@
 %sql
--- ============================================================
--- OLTP SOURCE SIMULATION (DELTA) FOR MEDALLION DEMO
--- ONLY: CREATE TABLES + INSERT SEED DATA
--- Unity Catalog + Notebook safe (copy-paste runnable)
--- ============================================================
 
--- ------------------------------------------------------------
--- 0) Use catalog + create schema
--- ------------------------------------------------------------
 USE CATALOG ecomsphere;
 CREATE SCHEMA IF NOT EXISTS src_oltp_sim;
 USE SCHEMA src_oltp_sim;
 
--- ------------------------------------------------------------
--- 1) Reference / Master tables (parents)
--- ------------------------------------------------------------
 
+1) Reference tables (parents)
 CREATE TABLE IF NOT EXISTS src_oltp_sim.brand (
   brand_id BIGINT,
   brand_name STRING,
@@ -46,10 +36,8 @@ CREATE TABLE IF NOT EXISTS src_oltp_sim.warehouse (
   is_deleted BOOLEAN
 ) USING DELTA;
 
--- ------------------------------------------------------------
--- 2) Customer tables
--- ------------------------------------------------------------
 
+2) Customer tables
 CREATE TABLE IF NOT EXISTS src_oltp_sim.customer (
   customer_id BIGINT,
   first_name STRING,
@@ -79,10 +67,8 @@ CREATE TABLE IF NOT EXISTS src_oltp_sim.customer_address (
   is_deleted BOOLEAN
 ) USING DELTA;
 
--- ------------------------------------------------------------
--- 3) Product tables
--- ------------------------------------------------------------
 
+3) Product tables
 CREATE TABLE IF NOT EXISTS src_oltp_sim.product (
   product_id BIGINT,
   product_name STRING,
@@ -106,10 +92,8 @@ CREATE TABLE IF NOT EXISTS src_oltp_sim.product_variant (
   is_deleted BOOLEAN
 ) USING DELTA;
 
--- ------------------------------------------------------------
--- 4) Inventory
--- ------------------------------------------------------------
 
+4) Inventory
 CREATE TABLE IF NOT EXISTS src_oltp_sim.inventory_level (
   warehouse_id BIGINT,
   product_variant_id BIGINT,
@@ -120,10 +104,8 @@ CREATE TABLE IF NOT EXISTS src_oltp_sim.inventory_level (
   is_deleted BOOLEAN
 ) USING DELTA;
 
--- ------------------------------------------------------------
--- 5) Transaction tables
--- ------------------------------------------------------------
 
+5) Transaction tables
 CREATE TABLE IF NOT EXISTS src_oltp_sim.orders (
   order_id BIGINT,
   customer_id BIGINT,
@@ -186,15 +168,10 @@ CREATE TABLE IF NOT EXISTS src_oltp_sim.shipment (
   is_deleted BOOLEAN
 ) USING DELTA;
 
--- ============================================================
--- SEED DATA LOAD (Notebook-safe)
--- IMPORTANT: We use INSERT OVERWRITE for master tables to make
--- reruns deterministic without MERGE syntax issues.
--- ============================================================
 
--- ------------------------------------------------------------
--- A) Master data (rerunnable)
--- ------------------------------------------------------------
+SEED DATA LOAD
+
+A) Master data
 
 INSERT OVERWRITE src_oltp_sim.brand
 SELECT * FROM VALUES
@@ -253,10 +230,8 @@ SELECT * FROM VALUES
   (101, 3003,  70,  4, current_timestamp(), current_timestamp(), false),
   (102, 3004,  35,  1, current_timestamp(), current_timestamp(), false);
 
--- ------------------------------------------------------------
--- B) Transaction data (DELETE + INSERT = deterministic reruns)
--- ------------------------------------------------------------
 
+B) Transaction data 
 DELETE FROM src_oltp_sim.shipment   WHERE order_id IN (9000, 9001, 9002);
 DELETE FROM src_oltp_sim.payment    WHERE order_id IN (9000, 9001, 9002);
 DELETE FROM src_oltp_sim.order_item WHERE order_id IN (9000, 9001, 9002);
@@ -286,11 +261,8 @@ INSERT INTO src_oltp_sim.shipment VALUES
   (93001, 9001, 101, 'Delhivery',   'CREATED', 'TRK-9001', NULL, NULL, current_timestamp(), current_timestamp(), false),
   (93002, 9002, 100, 'EcomExpress', 'CREATED', 'TRK-9002', NULL, NULL, current_timestamp(), current_timestamp(), false);
 
--- ============================================================
--- QUICK DATA CHECKS (LIMITED ROWS PER TABLE)
--- Unity Catalog + Notebook safe
--- ============================================================
 
+QUICK DATA CHECKS 
 USE CATALOG ecomsphere;
 USE SCHEMA src_oltp_sim;
 
@@ -311,6 +283,3 @@ SELECT * FROM src_oltp_sim.order_item      LIMIT 20;
 
 SELECT * FROM src_oltp_sim.payment         LIMIT 20;
 SELECT * FROM src_oltp_sim.shipment        LIMIT 20;
--- ============================================================
--- END
--- ============================================================
