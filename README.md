@@ -75,5 +75,4 @@ ecom-medallion-pipeline/
 
 
 ## Author
-Ansu Gusain
-Aspiring Data Engineer
+Ansu Gusain 
